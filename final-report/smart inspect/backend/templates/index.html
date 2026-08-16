@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>SmartInspect Cloud</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 40px auto;
+}
+
+button{
+    padding:10px 20px;
+    font-size:16px;
+}
+
+.result{
+    margin-top:20px;
+    border:1px solid #ccc;
+    padding:15px;
+}
+
+#report{
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+</style>
+
+</head>
+<body>
+
+<h1>SmartInspect Cloud</h1>
+
+<p>
+AIによるネジ品質検査サービス
+</p>
+
+<input type="file" id="file">
+
+<button onclick="inspectImage()">
+検査開始
+</button>
+
+<div class="result">
+
+<h3>判定結果</h3>
+
+<p id="result"></p>
+
+<h3>信頼度</h3>
+
+<p id="confidence"></p>
+
+<h3>AIレポート</h3>
+
+<pre id="report"></pre>
+
+</div>
+
+<script>
+
+async function inspectImage(){
+
+    const file =
+        document.getElementById("file").files[0];
+
+    if(!file){
+        alert("画像を選択してください");
+        return;
+    }
+
+    const formData =
+        new FormData();
+
+    formData.append("file", file);
+
+    const response =
+        await fetch("/inspect",{
+            method:"POST",
+            body:formData
+        });
+
+    const data =
+        await response.json();
+
+    document.getElementById("result")
+        .innerText = data.result;
+
+    document.getElementById("confidence")
+        .innerText =
+        (data.confidence * 100).toFixed(2) + "%";
+
+    document.getElementById("report")
+        .innerText = data.report;
+}
+
+</script>
+
+</body>
+</html>
