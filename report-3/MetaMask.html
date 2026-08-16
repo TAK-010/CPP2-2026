@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NNNN NFT Mint Page</title>
+    <!-- ethers.js (Web3接続ライブラリ) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0f0f11;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 480px;
+            width: 100%;
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        h1 { font-size: 24px; margin-bottom: 8px; }
+        p { color: #a1a1aa; font-size: 14px; margin-bottom: 24px; }
+        
+        .mint-btn {
+            background-color: #3182ce;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+        .mint-btn:hover { background-color: #2b6cb0; }
+        .mint-btn:disabled { background-color: #4a5568; cursor: not-allowed; }
+        .status {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #a1a1aa;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>NNNN NFT Collection</h1>
+        <p>Sepolia テストネットでミント可能です</p>
+        
+        <button id="claim-btn" class="mint-btn">ウォレットを接続してミント</button>
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        const CONTRACT_ADDRESS = "0x97B34f50cb82509647EbFF16553dE224F10e2791";
+        
+        // DropERC721 の minimal claim ABI
+        const CONTRACT_ABI = [
+            "function claim(address receiver, uint256 quantity, address currency, uint256 pricePerToken, tuple(bytes32[] proofs, uint256 maxClaimable, uint256 price, address currency) allowlistProof, bytes data) public payable"
+        ];
+
+        const claimBtn = document.getElementById("claim-btn");
+        const statusDiv = document.getElementById("status");
+
+        claimBtn.addEventListener("click", async () => {
+            if (!window.ethereum) {
+                alert("MetaMask をインストールしてください。");
+                return;
+            }
+
+            try {
+                claimBtn.disabled = true;
+                claimBtn.innerText = "処理中...";
+                statusDiv.innerText = "MetaMask 接続中...";
+
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                const signer = provider.getSigner();
+                const userAddress = await signer.getAddress();
+
+                // ネットワークチェック (Sepolia: 11155111 / 0xaa36a7)
+                const network = await provider.getNetwork();
+                if (network.chainId !== 11155111) {
+                    statusDiv.innerText = "MetaMaskのネットワークを Sepolia に切り替えてください。";
+                    claimBtn.disabled = false;
+                    claimBtn.innerText = "ウォレットを接続してミント";
+                    return;
+                }
+
+                statusDiv.innerText = "トランザクションを作成中...";
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                // Claim 引数 (通常ドロップ用)
+                const dummyProof = {
+                    proofs: [],
+                    maxClaimable: 0,
+                    price: 0,
+                    currency: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                };
+
+                statusDiv.innerText = "MetaMask で承認してください...";
+                const tx = await contract.claim(
+                    userAddress, // receiver
+                    1,            // quantity
+                    "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // currency (ETH)
+                    0,            // pricePerToken
+                    dummyProof,   // allowlistProof
+                    "0x"          // data
+                );
+
+                statusDiv.innerText = "トランザクション承認済み。ミント完了を待機中...";
+                await tx.wait();
+
+                statusDiv.innerText = "🎉 ミント成功！";
+                claimBtn.innerText = "ミント完了";
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerText = "エラー: " + (error.reason || error.message || "処理がキャンセルされました");
+                claimBtn.disabled = false;
+                claimBtn.innerText = "ウォレットを接続してミント";
+            }
+        });
+    </script>
+</body>
+</html>
